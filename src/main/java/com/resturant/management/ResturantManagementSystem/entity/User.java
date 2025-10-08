@@ -1,4 +1,5 @@
-package com.resturant.management.ResturantManagementSystem.model;
+package com.resturant.management.ResturantManagementSystem.entity;
+
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
