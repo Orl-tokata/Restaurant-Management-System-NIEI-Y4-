@@ -1,10 +1,10 @@
 package com.resturant.management.ResturantManagementSystem.controller;
 
+import com.resturant.management.ResturantManagementSystem.service.JwtService;
 import com.resturant.management.ResturantManagementSystem.util.DateTimeUtil;
 import com.resturant.management.ResturantManagementSystem.dto.*;
 import com.resturant.management.ResturantManagementSystem.entity.UserInfm;
 import com.resturant.management.ResturantManagementSystem.repository.UserRepository;
-import com.resturant.management.ResturantManagementSystem.security.JwtService;
 import com.resturant.management.ResturantManagementSystem.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;

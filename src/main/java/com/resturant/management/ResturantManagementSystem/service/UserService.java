@@ -5,6 +5,8 @@ import com.resturant.management.ResturantManagementSystem.entity.UserInfm;
 import com.resturant.management.ResturantManagementSystem.model.Role;
 import com.resturant.management.ResturantManagementSystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +19,18 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+
+    public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
+        UserInfm user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userId));
+
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getUserId())
+                .password(user.getUserPwd())
+                .roles(user.getRole().name())
+                .build();
+    }
 
     public boolean existsByUserId(String userId) {
         return userRepository.findByUserId(userId).isPresent();
@@ -77,4 +91,6 @@ public class UserService {
 
         return String.format("%05d", maxKey + 1);
     }
+
+
 }
