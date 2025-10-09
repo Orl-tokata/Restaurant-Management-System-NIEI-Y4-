@@ -1,5 +1,6 @@
 package com.resturant.management.ResturantManagementSystem.controller;
 
+import com.resturant.management.ResturantManagementSystem.service.ForgotPasswordService;
 import com.resturant.management.ResturantManagementSystem.service.JwtService;
 import com.resturant.management.ResturantManagementSystem.util.DateTimeUtil;
 import com.resturant.management.ResturantManagementSystem.dto.*;
@@ -33,6 +34,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
+    private final ForgotPasswordService forgotPasswordService;
 
     // --------------------- REGISTER ---------------------
     @PostMapping("/register")
@@ -143,24 +145,73 @@ public class AuthController {
     }
 
     // --------------------- FORGOT PASSWORD ---------------------
-    @GetMapping("/forgot-pass/{username}")
-    public ResponseEntity<?> forgotPassword(@PathVariable String username) {
-        return userService.getUserByUsername(username)
-                .map(user -> ResponseEntity.ok("Your password: " + user.getUserPwd()))
-                .orElseGet(() -> ResponseEntity.badRequest().body("Username not found!"));
-    }
+/*    @GetMapping("/forgot-pass/{userId}")
+    @Operation(summary = "Forgot password", description = "Retrieve user password by userId (for demo only — do not expose in production)")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(@PathVariable String userId) {
+        try {
+            return userService.getUserByUserId(userId)
+                    .map(user -> ResponseEntity.ok(
+                            new ApiResponse<>(200, "User found", "Your password: " + user.getUserPwd())
+                    ))
+                    .orElseGet(() -> ResponseEntity.status(404)
+                            .body(new ApiResponse<>(404, "User ID not found", null))
+                    );
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(500, "Internal server error: " + e.getMessage(), null));
+        }
+    }*/
 
-    // --------------------- CHANGE PASSWORD ---------------------
-    @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
-        boolean updated = userService.changePassword(request.getUsername(),
-                request.getOldPassword(), request.getNewPassword());
-
-        if (updated) {
-            return ResponseEntity.ok("Password updated successfully.");
-        } else {
-            return ResponseEntity.badRequest().body("Invalid username or old password.");
+    // --------------------- FORGOT PASSWORD ---------------------
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Forgot Password", description = "Sends reset password link to user's email")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(@RequestParam String email) {
+        try {
+            forgotPasswordService.createPasswordResetToken(email);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Password reset link sent to email", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(new ApiResponse<>(400, e.getMessage(), null));
         }
     }
+
+    // --------------------- RESET PASSWORD ---------------------
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset Password", description = "Reset password using token from email")
+    public ResponseEntity<ApiResponse<String>> resetPassword(@RequestParam String token, @RequestParam String newPassword) {
+        try {
+            forgotPasswordService.resetPassword(token, newPassword);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Password reset successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(new ApiResponse<>(400, e.getMessage(), null));
+        }
+    }
+
+
+    // --------------------- CHANGE PASSWORD ---------------------
+    /*@PostMapping("/change-password")
+    @Operation(summary = "Change password", description = "Change user password by userId")
+    public ResponseEntity<ApiResponse<String>> changePassword(@RequestBody ChangePasswordRequest request) {
+        try {
+            boolean updated = userService.changePassword(
+                    request.getUserId(),
+                    request.getOldPassword(),
+                    request.getNewPassword()
+            );
+            if (updated) {
+                return ResponseEntity.ok(
+                        new ApiResponse<>(200, "Password updated successfully", null)
+                );
+            } else {
+                return ResponseEntity.status(400)
+                        .body(new ApiResponse<>(400, "Invalid userId or old password", null));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(500, "Internal server error: " + e.getMessage(), null));
+        }
+    }*/
+
 }
 

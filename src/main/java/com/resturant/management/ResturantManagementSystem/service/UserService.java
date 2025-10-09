@@ -40,6 +40,11 @@ public class UserService {
         return userRepository.findByEml(email).isPresent();
     }
 
+    public Optional<UserInfm> getUserByUserId(String userId) {
+        return userRepository.findByUserId(userId);
+    }
+
+
     public UserInfm registerUser(RegisterRequest request, PasswordEncoder passwordEncoder) {
         UserInfm user = UserInfm.builder()
                 .bizKey(generateBizKey())
@@ -65,8 +70,9 @@ public class UserService {
         return userRepository.findByUserId(username);
     }
 
-    public boolean changePassword(String username, String oldPassword, String newPassword) {
-        Optional<UserInfm> userOpt = userRepository.findByUserId(username);
+    public boolean changePassword(String userId, String oldPassword, String newPassword) {
+        Optional<UserInfm> userOpt = userRepository.findByUserId(userId);
+
         if (userOpt.isPresent()) {
             UserInfm user = userOpt.get();
             if (passwordEncoder.matches(oldPassword, user.getUserPwd())) {
