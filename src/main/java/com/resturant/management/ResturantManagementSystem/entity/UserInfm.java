@@ -2,6 +2,7 @@ package com.resturant.management.ResturantManagementSystem.entity;
 
 
 import com.resturant.management.ResturantManagementSystem.model.Role;
+import com.resturant.management.ResturantManagementSystem.util.DateTimeUtil;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -11,60 +12,74 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
-@Data
-@Builder
 @Entity
-@Table(name = "USERS_INFM")
+@Table(name = "USER_INFM")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserInfm implements UserDetails {
-//    @Id
-//    @GeneratedValue(strategy = GenerationType.IDENTITY)
-//    private Long id;
-//
-//    private String username;
-//    private String upass;
-//    private String uName;
-//    private String uRole;
-//
-//    @Lob
-//    private byte[] pImage;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;              // Auto-generated ID as primary key
-
-    @Column(name = "biz_key", nullable = false, unique = true, length = 10)
+    @Column(name = "BIZ_KEY")
     private String bizKey;
 
+    @Id
+    @Column(name = "USER_ID")
     private String userId;
+
+    @Column(name = "USER_NM")
     private String userNm;
+
+    @Column(name = "USER_PWD")
     private String userPwd;
+
+    @Column(name = "TEL")
     private String tel;
+
+    @Column(name = "EML")
     private String eml;
+
+    @Column(name = "USER_IMG")
     private String usrImg;
+
+    @Column(name = "LOCK_YN")
     private String lockYn;
-    private Integer loginFailedCnt;
+
+    @Column(name = "LOGIN_FAILED_CNT")
+    private String loginFailedCnt;
+
+    @Column(name = "ACT_YN")
     private String actYn;
+
+    @Column(name = "REG_ID")
     private String regId;
+
+    @Column(name = "LST_LGN_DTM")
     private String lstLgnDtm;
+
+    @Column(name = "REG_DTM")
     private String regDtm;
+
+    @Column(name = "MOD_ID")
     private String modId;
+
+    @Column(name = "MOD_DTM")
     private String modDtm;
 
-    @Enumerated(EnumType.STRING)
-    private Role role;
+    @PrePersist
+    protected void onCreate() {
+        regDtm = DateTimeUtil.FORMAT_MMM_DD_YYYY;
+    }
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.name()));
+    @PreUpdate
+    protected void onUpdate() {
+        modDtm = DateTimeUtil.FORMAT_MMM_DD_YYYY;
     }
 
     @Override
-    public String getUsername() {
-        return userId;
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return null;
     }
 
     @Override
@@ -73,39 +88,7 @@ public class UserInfm implements UserDetails {
     }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return !"Y".equals(lockYn);
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return "Y".equals(actYn);
-    }
-
-    // Helper methods for login lockout functionality
-    public void incrementFailedLoginAttempts() {
-        this.loginFailedCnt = (this.loginFailedCnt == null) ? 1 : this.loginFailedCnt + 1;
-        if (this.loginFailedCnt >= 5) {
-            this.lockYn = "Y";
-        }
-    }
-
-    public void resetFailedLoginAttempts() {
-        this.loginFailedCnt = 0;
-        this.lockYn = "N";
-    }
-
-    public boolean isLocked() {
-        return "Y".equals(this.lockYn);
+    public String getUsername() {
+        return userId;
     }
 }

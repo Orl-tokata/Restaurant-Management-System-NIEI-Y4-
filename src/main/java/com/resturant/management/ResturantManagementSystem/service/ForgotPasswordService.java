@@ -22,8 +22,8 @@ public class ForgotPasswordService {
     private final PasswordEncoder passwordEncoder;
 
     // Step 1: Request password reset
-    public void createPasswordResetToken(String email) {
-        Optional<UserInfm> optionalUser = userRepository.findByEml(email);
+    /*public void createPasswordResetToken(String email) {
+        UserInfm optionalUser = userRepository.findByEml(email);
         if (optionalUser.isEmpty()) {
             throw new RuntimeException("No user found with this email.");
         }
@@ -40,7 +40,7 @@ public class ForgotPasswordService {
         String resetLink = "http://localhost:4200/reset-password?token=" + token;
         mailService.send(email, "Password Reset Request",
                 "Click the following link to reset your password: " + resetLink);
-    }
+    }*/
 
     // Step 2: Reset the password
     public void resetPassword(String token, String newPassword) {

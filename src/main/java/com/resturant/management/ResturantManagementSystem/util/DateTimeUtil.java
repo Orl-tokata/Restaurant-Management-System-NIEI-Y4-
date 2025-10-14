@@ -12,8 +12,8 @@ public class DateTimeUtil {
     public static final DateTimeFormatter FORMAT_DD_MM_YYYY =
             DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    public static final DateTimeFormatter FORMAT_MMM_DD_YYYY =
-            DateTimeFormatter.ofPattern("MMM dd, yyyy");
+    public static final String FORMAT_MMM_DD_YYYY =
+            String.valueOf(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
 
     public static final DateTimeFormatter FORMAT_FULL_WITH_AM_PM =
             DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss a");
@@ -28,16 +28,16 @@ public class DateTimeUtil {
     /**
      * Shortcut methods
      */
-    public static String formatDefault(LocalDateTime dateTime) {
-        return format(dateTime, FORMAT_YYYY_MM_DD_HH_MM_SS);
-    }
+//    public static String formatDefault() {
+//        return format(dateTime, FORMAT_YYYY_MM_DD_HH_MM_SS);
+//    }
 
     public static String formatSlashDate(LocalDateTime dateTime) {
         return format(dateTime, FORMAT_DD_MM_YYYY);
     }
 
     public static String formatMonthName(LocalDateTime dateTime) {
-        return format(dateTime, FORMAT_MMM_DD_YYYY);
+        return format(dateTime, DateTimeFormatter.ofPattern(FORMAT_MMM_DD_YYYY));
     }
 
     public static String formatFullWithAmPm(LocalDateTime dateTime) {

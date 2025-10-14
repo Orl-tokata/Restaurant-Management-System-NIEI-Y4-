@@ -1,4 +1,4 @@
-package com.resturant.management.ResturantManagementSystem.dto;
+package com.resturant.management.ResturantManagementSystem.dto.request;
 
 import lombok.Getter;
 import lombok.Setter;

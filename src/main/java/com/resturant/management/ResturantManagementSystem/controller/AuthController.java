@@ -1,18 +1,25 @@
 package com.resturant.management.ResturantManagementSystem.controller;
 
+import com.resturant.management.ResturantManagementSystem.dto.request.RegisterRequest;
+import com.resturant.management.ResturantManagementSystem.dto.response.ApiMsgResp;
+import com.resturant.management.ResturantManagementSystem.dto.response.ApiResponse;
+import com.resturant.management.ResturantManagementSystem.dto.response.AuthResponse;
+import com.resturant.management.ResturantManagementSystem.enums.YesNo;
 import com.resturant.management.ResturantManagementSystem.service.ForgotPasswordService;
 import com.resturant.management.ResturantManagementSystem.service.JwtService;
-import com.resturant.management.ResturantManagementSystem.util.DateTimeUtil;
-import com.resturant.management.ResturantManagementSystem.dto.*;
 import com.resturant.management.ResturantManagementSystem.entity.UserInfm;
 import com.resturant.management.ResturantManagementSystem.repository.UserRepository;
 import com.resturant.management.ResturantManagementSystem.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,120 +27,103 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
-import java.time.LocalDateTime;
+import java.util.Optional;
 
 
 @RestController
-@RequestMapping("/api/auth")
-@Tag(name = "Authentication", description = "APIs for user authentication and registration")
+@RequestMapping("restaurant_mng/auth/")
+@Tag(name = "Authentication", description = "Serve for login and logout")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
     private final ForgotPasswordService forgotPasswordService;
 
     // --------------------- REGISTER ---------------------
-    @PostMapping("/register")
-    @Operation(summary = "Register a new user", description = "Creates a new user account with userId, userNm, userPwd, eml, and tel")
-    public ResponseEntity<ApiResponse<AuthResponse>> register(@RequestBody RegisterRequest request) {
-
-        try {
-            // Validate if userId or email already exists
-            if (userService.existsByUserId(request.getUserId())) {
-                return ResponseEntity.badRequest()
-                        .body(new ApiResponse<>(400, "User ID already exists", null));
-            }
-
-            if (userService.existsByEmail(request.getEml())) {
-                return ResponseEntity.badRequest()
-                        .body(new ApiResponse<>(400, "Email already exists", null));
-            }
-
-            // Create user
-            UserInfm user = userService.registerUser(request, passwordEncoder);
-
-            // Generate JWT token
-            String token = jwtService.generateToken(user);
-
-            return ResponseEntity.ok(new ApiResponse<>(200, "User registered successfully",
-                    new AuthResponse(token, "Registration successful")));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500)
-                    .body(new ApiResponse<>(500, "Internal server error: " + e.getMessage(), null));
-        }
-    }
+//    @PostMapping("/register")
+//    @Operation(summary = "Register a new user", description = "Creates a new user account with userId, userNm, userPwd, eml, and tel")
+//    public ResponseEntity<ApiResponse<AuthResponse>> register(@RequestBody RegisterRequest request) {
+//
+//        try {
+//            // Validate if userId or email already exists
+//            if (userService.existsByUserId(request.getUserId())) {
+//                return ResponseEntity.badRequest()
+//                        .body(new ApiResponse<>(400, "User ID already exists", null));
+//            }
+//
+//            if (userService.existsByEmail(request.getEml())) {
+//                return ResponseEntity.badRequest()
+//                        .body(new ApiResponse<>(400, "Email already exists", null));
+//            }
+//
+//            // Create user
+//            UserInfm user = userService.registerUser(request, passwordEncoder);
+//
+//            // Generate JWT token
+//            String token = jwtService.generateToken(user);
+//
+//            return ResponseEntity.ok(new ApiResponse<>(200, "User registered successfully",
+//                    new AuthResponse(token, "Registration successful")));
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return ResponseEntity.status(500)
+//                    .body(new ApiResponse<>(500, "Internal server error: " + e.getMessage(), null));
+//        }
+//    }
 
     // --------------------- LOGIN ---------------------
-    @PostMapping("/login")
-    @Operation(summary = "User login", description = "Authenticates user with userId and userPwd")
-    public ResponseEntity<ApiResponse<AuthResponse>> authenticate(@RequestBody AuthRequest request) {
+
+    @Operation(summary = "Serve login", description = "Your UserId can be ID or email or phone number")
+    @PostMapping("login")
+    public ResponseEntity<ApiMsgResp<?>> login(@RequestParam String userId, @RequestParam String userPwd, HttpServletRequest httpRequest) {
         try {
-            // First check if user exists
-            var userOptional = userRepository.findByUserId(request.getUserId());
-            if (userOptional.isEmpty()) {
-                return ResponseEntity.status(401).body(
-                        new ApiResponse<>(401, "The User is not found!", null)
-                );
+            UserInfm user = userRepository.findByUserId(userId);
+            if (user == null) {
+                log.warn("Login attempt with non-existent user ID: {}", userId);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiMsgResp<>(HttpStatus.UNAUTHORIZED.value(), "Your ID doesn't exist"));
             }
 
-            var user = userOptional.get();
-
-            // Check if account is locked
-            if (user.isLocked()) {
-                return ResponseEntity.status(423).body(
-                        new ApiResponse<>(423, "Account is locked due to too many failed login attempts. Please try again later.", null)
-                );
-            }
-
-            // Try to authenticate
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            request.getUserId(),
-                            request.getUserPwd()
-                    )
-            );
-
-            // Successful login: reset attempts and update last login time
-            user.resetFailedLoginAttempts();
-            user.setLstLgnDtm(DateTimeUtil.formatDefault(LocalDateTime.now()));
-            userRepository.save(user);
-            var jwtToken = jwtService.generateToken(user);
-            return ResponseEntity.ok(new ApiResponse<>(200, "Login successful",
-                    AuthResponse.builder().token(jwtToken).message("Login successful").build()));
-
-        } catch (BadCredentialsException ex) {
-            // Handle incorrect password
-            userRepository.findByUserId(request.getUserId()).ifPresent(user -> {
-                user.incrementFailedLoginAttempts();
+            int loginCount = Integer.parseInt(Optional.ofNullable(user.getLoginFailedCnt()).orElse("0"));
+            // Account locked
+            if (loginCount >= 5) {
+                user.setLockYn(YesNo.YES.getValue());
                 userRepository.save(user);
-            });
-            return ResponseEntity.status(401).body(
-                    new ApiResponse<>(401, "Incorrect userId or password", null)
-            );
-        } catch (UsernameNotFoundException ex) {
-            // Handle user not found
-            return ResponseEntity.status(401).body(
-                    new ApiResponse<>(401, "Incorrect userId or password", null)
-            );
-        } catch (AuthenticationException ex) {
-            // Handle other authentication errors
-            return ResponseEntity.status(401).body(
-                    new ApiResponse<>(401, "Authentication failed", null)
-            );
-        } catch (Exception ex) {
-            // Log the exception for debugging
-            System.err.println("Login error: " + ex.getMessage());
-            ex.printStackTrace();
-            return ResponseEntity.status(500).body(
-                    new ApiResponse<>(500, "Internal server error", null)
-            );
+                log.warn("Account locked due to too many failed login attempts: {}", userId);
+                //userService.notifyAccountLocked(user.getUserId(), user.getEml());  // This line triggers the email notification
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiMsgResp<>(HttpStatus.FORBIDDEN.value(), "Too many failed login attempts. Your account has been locked!"));
+            }
+
+            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(userId, userPwd));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            user.setLoginFailedCnt("0");
+            userRepository.save(user);
+
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            String token = jwtService.generateToken(userDetails);
+
+            //UserLoginHis loginHis = createUserLoginHistory(httpRequest, user.getBizKey(), user.getUserId(), HttpStatus.CREATED, "Login Success");
+            //loginHisRepo.save(loginHis);
+
+            log.info("Login successful for user ID: {}", userId);
+            return ResponseEntity.ok().body(new ApiMsgResp<>(token, HttpStatus.OK.value(), "Login successful"));
+
+        //} catch (BadCredentialsException e) {
+           // log.warn("Invalid login attempt for user ID: {}", userId);
+            //return handleLoginFailure(userId, httpRequest);
+        } catch (Exception e) {
+            log.error("An error occurred during login for user ID: {}", userId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiMsgResp<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred. Please try again later."));
         }
     }
+
+
 
     // --------------------- Logout ---------------------
 
@@ -164,7 +154,7 @@ public class AuthController {
     }*/
 
     // --------------------- FORGOT PASSWORD ---------------------
-    @PostMapping("/forgot-password")
+    /*@PostMapping("/forgot-password")
     @Operation(summary = "Forgot Password", description = "Sends reset password link to user's email")
     public ResponseEntity<ApiResponse<String>> forgotPassword(@RequestParam String email) {
         try {
@@ -173,7 +163,7 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.status(400).body(new ApiResponse<>(400, e.getMessage(), null));
         }
-    }
+    }*/
 
     // --------------------- RESET PASSWORD ---------------------
     @PostMapping("/reset-password")

@@ -11,6 +11,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class StaffService {
+
     private final StaffRepository staffRepository;
 
     public List<Staff> getAllStaff() {
@@ -21,22 +22,27 @@ public class StaffService {
         return staffRepository.findById(id);
     }
 
-    public Staff saveStaff(Staff staff) {
+    public Staff createStaff(Staff staff) {
+        // ✅ ensure ID is null (avoid OptimisticLocking error)
+        staff.setStaffID(null);
         return staffRepository.save(staff);
     }
 
-    public Staff updateStaff(Long id, Staff staffDetails) {
-        return staffRepository.findById(id)
-                .map(staff -> {
-                    staff.setSName(staffDetails.getSName());
-                    staff.setSPhone(staffDetails.getSPhone());
-                    staff.setSRole(staffDetails.getSRole());
-                    return staffRepository.save(staff);
-                })
-                .orElseThrow(() -> new RuntimeException("Staff not found with id " + id));
+    public Staff updateStaff(Long id, Staff updated) {
+        Staff existing = staffRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Staff not found"));
+
+        existing.setSname(updated.getSname());
+        existing.setSphone(updated.getSphone());
+        existing.setSrole(updated.getSrole());
+
+        return staffRepository.save(existing);
     }
 
     public void deleteStaff(Long id) {
+        if (!staffRepository.existsById(id)) {
+            throw new RuntimeException("Staff not found");
+        }
         staffRepository.deleteById(id);
     }
 }

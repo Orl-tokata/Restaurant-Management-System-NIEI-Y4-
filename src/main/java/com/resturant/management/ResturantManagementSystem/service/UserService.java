@@ -1,10 +1,12 @@
 package com.resturant.management.ResturantManagementSystem.service;
 
-import com.resturant.management.ResturantManagementSystem.dto.RegisterRequest;
+import com.resturant.management.ResturantManagementSystem.dto.request.RegisterRequest;
 import com.resturant.management.ResturantManagementSystem.entity.UserInfm;
 import com.resturant.management.ResturantManagementSystem.model.Role;
 import com.resturant.management.ResturantManagementSystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,7 +19,26 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserRepository userRepository;
+    @Autowired
+    private UserRepository userInfmRepository;
+
+    public Optional<UserInfm> findByUsername(String username) {
+        return Optional.ofNullable(userInfmRepository.findByUsername(username));
+    }
+
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        UserInfm user = userInfmRepository.findByUsername(username);
+        if (user == null) {
+            throw new UsernameNotFoundException("Your ID does not exist: " + username);
+        }
+        return User
+                .withUsername(user.getUsername())
+                .password(user.getPassword())
+                .authorities("ADMIN")
+                .build();
+    }
+
+    /*private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
 
@@ -96,7 +117,7 @@ public class UserService {
                 .max().orElse(0);
 
         return String.format("%05d", maxKey + 1);
-    }
+    }*/
 
 
 }

@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/staff")
@@ -28,9 +29,14 @@ public class StaffController {
     }
 
     @PostMapping
-    public ResponseEntity<Staff> createStaff(@RequestBody Staff staff) {
-        return ResponseEntity.ok(staffService.saveStaff(staff));
+    public ResponseEntity<?> createStaff(@RequestBody Staff staff) {
+        Staff created = staffService.createStaff(staff);
+        return ResponseEntity.ok(Map.of(
+                "message", "Staff created successfully!",
+                "staff", created
+        ));
     }
+
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateStaff(@PathVariable Long id, @RequestBody Staff staff) {
@@ -42,7 +48,7 @@ public class StaffController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteStaff(@PathVariable Long id) {
+    public ResponseEntity<String> deleteStaff(@PathVariable Long id) {
         staffService.deleteStaff(id);
         return ResponseEntity.ok("Staff deleted successfully.");
     }
