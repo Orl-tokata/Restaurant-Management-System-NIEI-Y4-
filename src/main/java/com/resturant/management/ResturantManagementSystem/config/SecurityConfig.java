@@ -76,7 +76,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> auth
                         // ✅ public endpoints
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api/auth/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/restaurant_mng/auth/**").permitAll()
                         // ✅ allow only POST for staff creation
                         //.requestMatchers(HttpMethod.POST, "/api/staff").permitAll()
                         // ✅ everything else needs authentication

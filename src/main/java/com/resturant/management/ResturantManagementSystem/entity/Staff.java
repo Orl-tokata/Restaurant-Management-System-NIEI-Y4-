@@ -19,4 +19,13 @@ public class Staff {
     private String sname;
     private String sphone;
     private String srole;
+
+
+    @ManyToOne
+    @JoinColumn(
+            name = "USER_ID",
+            referencedColumnName = "USER_ID",
+            foreignKey = @ForeignKey(name = "FK_STAFF_USER")
+    )
+    private UserInfm user;
 }

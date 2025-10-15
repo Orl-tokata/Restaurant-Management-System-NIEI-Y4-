@@ -2,12 +2,10 @@ package com.resturant.management.ResturantManagementSystem.service;
 
 import com.resturant.management.ResturantManagementSystem.dto.request.RegisterRequest;
 import com.resturant.management.ResturantManagementSystem.entity.UserInfm;
-import com.resturant.management.ResturantManagementSystem.model.Role;
 import com.resturant.management.ResturantManagementSystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,40 +15,15 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class UserService implements UserDetailsService {
 
-    @Autowired
-    private UserRepository userInfmRepository;
-
-    public Optional<UserInfm> findByUsername(String username) {
-        return Optional.ofNullable(userInfmRepository.findByUsername(username));
-    }
-
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UserInfm user = userInfmRepository.findByUsername(username);
-        if (user == null) {
-            throw new UsernameNotFoundException("Your ID does not exist: " + username);
-        }
-        return User
-                .withUsername(user.getUsername())
-                .password(user.getPassword())
-                .authorities("ADMIN")
-                .build();
-    }
-
-    /*private final UserRepository userRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-
+    @Override
     public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
-        UserInfm user = userRepository.findByUserId(userId)
+        return userRepository.findByUserId(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userId));
-
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getUserId())
-                .password(user.getUserPwd())
-                .roles(user.getRole().name())
-                .build();
     }
 
     public boolean existsByUserId(String userId) {
@@ -65,19 +38,17 @@ public class UserService {
         return userRepository.findByUserId(userId);
     }
 
-
     public UserInfm registerUser(RegisterRequest request, PasswordEncoder passwordEncoder) {
         UserInfm user = UserInfm.builder()
                 .bizKey(generateBizKey())
                 .userId(request.getUserId())
                 .userNm(request.getUserNm())
-                .userPwd(passwordEncoder.encode(request.getUserPwd()))
+                .userPwd(this.passwordEncoder.encode(request.getUserPwd()))
                 .eml(request.getEml())
                 .tel(request.getTel())
                 .usrImg("")
-                .role(Role.USER)
                 .lockYn("N")
-                .loginFailedCnt(0)
+                .loginFailedCnt("0")
                 .actYn("Y")
                 .regId(request.getUserId())
                 .regDtm(String.valueOf(LocalDateTime.now()))
@@ -87,37 +58,31 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public Optional<UserInfm> getUserByUsername(String username) {
-        return userRepository.findByUserId(username);
-    }
-
     public boolean changePassword(String userId, String oldPassword, String newPassword) {
-        Optional<UserInfm> userOpt = userRepository.findByUserId(userId);
-
-        if (userOpt.isPresent()) {
-            UserInfm user = userOpt.get();
-            if (passwordEncoder.matches(oldPassword, user.getUserPwd())) {
-                user.setUserPwd(passwordEncoder.encode(newPassword));
-                userRepository.save(user);
-                return true;
-            }
-        }
-        return false;
+        return userRepository.findByUserId(userId)
+                .map(user -> {
+                    if (passwordEncoder.matches(oldPassword, user.getUserPwd())) {
+                        user.setUserPwd(passwordEncoder.encode(newPassword));
+                        userRepository.save(user);
+                        return true;
+                    }
+                    return false;
+                })
+                .orElse(false);
     }
 
     private String generateBizKey() {
-        var allUsers = userRepository.findAll();
-        if (allUsers.isEmpty()) return "00001";
-
-        long maxKey = allUsers.stream()
-                .mapToLong(user -> {
-                    try { return Long.parseLong(user.getBizKey()); }
-                    catch (NumberFormatException e) { return 0; }
+        long maxKey = userRepository.findAll().stream()
+                .mapToLong(u -> {
+                    try {
+                        return Long.parseLong(u.getBizKey());
+                    } catch (NumberFormatException e) {
+                        return 0;
+                    }
                 })
-                .max().orElse(0);
-
+                .max()
+                .orElse(0);
         return String.format("%05d", maxKey + 1);
-    }*/
-
-
+    }
 }
+

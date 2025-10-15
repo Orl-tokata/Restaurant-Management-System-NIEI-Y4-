@@ -45,85 +45,93 @@ public class AuthController {
     private final ForgotPasswordService forgotPasswordService;
 
     // --------------------- REGISTER ---------------------
-//    @PostMapping("/register")
-//    @Operation(summary = "Register a new user", description = "Creates a new user account with userId, userNm, userPwd, eml, and tel")
-//    public ResponseEntity<ApiResponse<AuthResponse>> register(@RequestBody RegisterRequest request) {
-//
-//        try {
-//            // Validate if userId or email already exists
-//            if (userService.existsByUserId(request.getUserId())) {
-//                return ResponseEntity.badRequest()
-//                        .body(new ApiResponse<>(400, "User ID already exists", null));
-//            }
-//
-//            if (userService.existsByEmail(request.getEml())) {
-//                return ResponseEntity.badRequest()
-//                        .body(new ApiResponse<>(400, "Email already exists", null));
-//            }
-//
-//            // Create user
-//            UserInfm user = userService.registerUser(request, passwordEncoder);
-//
-//            // Generate JWT token
-//            String token = jwtService.generateToken(user);
-//
-//            return ResponseEntity.ok(new ApiResponse<>(200, "User registered successfully",
-//                    new AuthResponse(token, "Registration successful")));
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return ResponseEntity.status(500)
-//                    .body(new ApiResponse<>(500, "Internal server error: " + e.getMessage(), null));
-//        }
-//    }
+    @PostMapping("/register")
+    @Operation(summary = "Register a new user", description = "Creates a new user account with userId, userNm, userPwd, eml, and tel")
+    public ResponseEntity<ApiResponse<AuthResponse>> register(@RequestBody RegisterRequest request) {
 
-    // --------------------- LOGIN ---------------------
-
-    @Operation(summary = "Serve login", description = "Your UserId can be ID or email or phone number")
-    @PostMapping("login")
-    public ResponseEntity<ApiMsgResp<?>> login(@RequestParam String userId, @RequestParam String userPwd, HttpServletRequest httpRequest) {
         try {
-            UserInfm user = userRepository.findByUserId(userId);
-            if (user == null) {
-                log.warn("Login attempt with non-existent user ID: {}", userId);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiMsgResp<>(HttpStatus.UNAUTHORIZED.value(), "Your ID doesn't exist"));
+            // Validate if userId or email already exists
+            if (userService.existsByUserId(request.getUserId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(400, "User ID already exists", null));
             }
 
+            if (userService.existsByEmail(request.getEml())) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(400, "Email already exists", null));
+            }
+
+            // Create user
+            UserInfm user = userService.registerUser(request, passwordEncoder);
+
+            // Generate JWT token
+            String token = jwtService.generateToken(user);
+
+            return ResponseEntity.ok(new ApiResponse<>(200, "User registered successfully",
+                    new AuthResponse(token, "Registration successful")));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(500, "Internal server error: " + e.getMessage(), null));
+        }
+    }
+
+    // --------------------- LOGIN ---------------------
+    @Operation(summary = "Serve login", description = "Your UserId can be ID or email or phone number")
+    @PostMapping("login")
+    public ResponseEntity<ApiMsgResp<?>> login(
+            @RequestParam String userId,
+            @RequestParam String userPwd,
+            HttpServletRequest httpRequest) {
+
+        try {
+            Optional<UserInfm> userOpt = userRepository.findByUserId(userId);
+
+            if (userOpt.isEmpty()) {
+                log.warn("Login attempt with non-existent user ID: {}", userId);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiMsgResp<>(HttpStatus.UNAUTHORIZED.value(), "Your ID doesn't exist"));
+            }
+
+            UserInfm user = userOpt.get(); // unwrap Optional
+
             int loginCount = Integer.parseInt(Optional.ofNullable(user.getLoginFailedCnt()).orElse("0"));
+
             // Account locked
             if (loginCount >= 5) {
                 user.setLockYn(YesNo.YES.getValue());
                 userRepository.save(user);
                 log.warn("Account locked due to too many failed login attempts: {}", userId);
-                //userService.notifyAccountLocked(user.getUserId(), user.getEml());  // This line triggers the email notification
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(new ApiMsgResp<>(HttpStatus.FORBIDDEN.value(), "Too many failed login attempts. Your account has been locked!"));
             }
 
-            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(userId, userPwd));
+            // Authenticate user
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(userId, userPwd)
+            );
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
+            // Reset login failed count on successful login
             user.setLoginFailedCnt("0");
             userRepository.save(user);
 
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             String token = jwtService.generateToken(userDetails);
 
-            //UserLoginHis loginHis = createUserLoginHistory(httpRequest, user.getBizKey(), user.getUserId(), HttpStatus.CREATED, "Login Success");
-            //loginHisRepo.save(loginHis);
-
             log.info("Login successful for user ID: {}", userId);
             return ResponseEntity.ok().body(new ApiMsgResp<>(token, HttpStatus.OK.value(), "Login successful"));
 
-        //} catch (BadCredentialsException e) {
-           // log.warn("Invalid login attempt for user ID: {}", userId);
-            //return handleLoginFailure(userId, httpRequest);
+        } catch (BadCredentialsException e) {
+            log.warn("Invalid login attempt for user ID: {}", userId);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiMsgResp<>(HttpStatus.UNAUTHORIZED.value(), "Invalid credentials"));
         } catch (Exception e) {
             log.error("An error occurred during login for user ID: {}", userId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiMsgResp<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred. Please try again later."));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiMsgResp<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred. Please try again later."));
         }
     }
-
-
 
     // --------------------- Logout ---------------------
 
@@ -135,7 +143,7 @@ public class AuthController {
     }
 
     // --------------------- FORGOT PASSWORD ---------------------
-/*    @GetMapping("/forgot-pass/{userId}")
+    @GetMapping("/forgot-pass/{userId}")
     @Operation(summary = "Forgot password", description = "Retrieve user password by userId (for demo only — do not expose in production)")
     public ResponseEntity<ApiResponse<String>> forgotPassword(@PathVariable String userId) {
         try {
@@ -151,19 +159,7 @@ public class AuthController {
             return ResponseEntity.status(500)
                     .body(new ApiResponse<>(500, "Internal server error: " + e.getMessage(), null));
         }
-    }*/
-
-    // --------------------- FORGOT PASSWORD ---------------------
-    /*@PostMapping("/forgot-password")
-    @Operation(summary = "Forgot Password", description = "Sends reset password link to user's email")
-    public ResponseEntity<ApiResponse<String>> forgotPassword(@RequestParam String email) {
-        try {
-            forgotPasswordService.createPasswordResetToken(email);
-            return ResponseEntity.ok(new ApiResponse<>(200, "Password reset link sent to email", null));
-        } catch (Exception e) {
-            return ResponseEntity.status(400).body(new ApiResponse<>(400, e.getMessage(), null));
-        }
-    }*/
+    }
 
     // --------------------- RESET PASSWORD ---------------------
     @PostMapping("/reset-password")
